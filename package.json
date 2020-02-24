@@ -1,0 +1,15 @@
+{
+  "name": "edtapi",
+  "version": "1.0.0",
+  "description": "Retrieve some informations on my edt for Google Assistant Webhook",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "pjdevs",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
