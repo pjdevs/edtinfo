@@ -21,6 +21,6 @@ server.post('/nextCourse', (req, res) => {
     });
 });
 
-server.listen(8080, '0.0.0.0', () => {
-    console.log('Server listenning on port 8080');
+server.listen(80, '0.0.0.0', () => {
+    console.log('Server listenning on port 80');
 });
