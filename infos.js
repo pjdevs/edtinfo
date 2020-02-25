@@ -20,10 +20,21 @@ function getTime() {
     return date.getHours()*60 + date.getMinutes();
 }
 
-function getDate(d=0) {
+function getDateIn(d=0) {
     let date = new Date();
     date.setDate(date.getDate()+d);
 
+    let day = date.getDate().toString();
+    let month = (date.getMonth() + 1).toString();
+    let year = date.getFullYear().toString();
+
+    if (month.length == 1) month = '0' + month;
+    if (day.length == 1) day = '0' + day;
+
+    return `${year}/${month}/${day}`;
+}
+
+function getDateFromDate(date) {
     let day = date.getDate().toString();
     let month = (date.getMonth() + 1).toString();
     let year = date.getFullYear().toString();
@@ -83,9 +94,18 @@ function getPrettyStart(course) {
     else return time[0] + ' heures ' + time[1];
 }
 
+function getPrettyEnd(course) {
+    let time = course.endtime.split(':');
+
+    if (time[0][0] == '0') time[0] = time[0][1];
+
+    if (time[1] == '00') return time[0] + ' heures';
+    else return time[0] + ' heures ' + time[1];
+}
+
 async function getNextCourse() {
     let course = undefined;
-    let today = await getCourseList('day', getDate());
+    let today = await getCourseList('day', getDateIn());
     
     if (today.length != 0) {
         let less = 24*60;
@@ -99,31 +119,55 @@ async function getNextCourse() {
             }
         });
     }
+
+    let time = '';
+
     if (course == undefined) {
         let tomorrow = [];
-        let i = 1;
+        let i = 0;
 
         do {
-            tomorrow = await getCourseList('day', getDate(i));
+            tomorrow = await getCourseList('day', getDateIn(i+1));
             i++;
         } while (tomorrow.length == 0)
 
         course = tomorrow[0];
+        
+        if (i == 1) time = ' demain à ';
+        else if (i == 2) time = ' après demain à ';
+        else time = ` dans ${i} jours à `;
     }
 
-    return {
-        name: getName(course),
-        start: getPrettyStart(course)
-    };
+
+    if (time == '') {
+        return {
+            name: getName(course),
+            start: ' à ' + getPrettyStart(course)
+        };
+    }
+    else {
+        return {
+            name: getName(course),
+            start: time + getPrettyStart(course)
+        };
+    }
 }
 
-async function getEndTime() {
+async function getEndTime(date) {
     let course = undefined;
-    let today = await getCourseList('day', getDate());
+    let today = await getCourseList('day', getDateFromDate(date));
     
-    if (today.length != 0) course = today[today.length-1];
+    if (today.length != 0) {
+        course = today[today.length-1];
+
+        return {
+            name: getName(course),
+            end: getPrettyEnd(course)
+        }
+    }
 
     return course;
 }
 
 exports.getNextCourse = getNextCourse;
+exports.getEndTime = getEndTime;
