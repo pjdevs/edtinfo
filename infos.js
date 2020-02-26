@@ -74,7 +74,7 @@ function getName(course) {
     let name = course.subject.split(' ');
     name.shift();
     
-    name = name.filter(e => e != 'MP' && e != 'MPC' && e != '4');
+    name = name.filter(e => e != 'MP' && e != 'MPC' && e != '4' && e != 'Physique:');
 
     return name.join(' ');
 }
@@ -169,5 +169,23 @@ async function getEndTime(date) {
     return course;
 }
 
+async function getDayCourse(date) {
+    let today = await getCourseList('day', getDateFromDate(date));
+    let courses = []
+
+    today.forEach(course => {
+        courses.push({
+            name: getName(course),
+            staff: course.staff,
+            schedule: course.schedule,
+            room: course.room
+        });
+    });
+
+    return courses;
+}
+
 exports.getNextCourse = getNextCourse;
 exports.getEndTime = getEndTime;
+exports.getDayCourse = getDayCourse;
+exports.getPrettyDate = getDateFromDate;

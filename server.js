@@ -3,7 +3,7 @@ const morgan = require('morgan');
 const parser = require('body-parser')
 const infos = require('./infos');
 
-function simpleResponse(text, quit) {
+function simpleResponse(speech, quit) {
     return {
         payload: {
             google: {
@@ -12,7 +12,33 @@ function simpleResponse(text, quit) {
                     items: [
                         {
                             simpleResponse: {
-                                textToSpeech: text
+                                textToSpeech: speech
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    };
+}
+
+function basicCard(title, subtitle, text, speech, quit) {
+    return {
+        payload: {
+            google: {
+                expectUserResponse: !quit,
+                richResponse: {
+                    items: [
+                        {
+                            simpleResponse: {
+                                textToSpeech: speech
+                            }
+                        },
+                        {
+                            basicCard: {
+                                title: title,
+                                subtitle: subtitle,
+                                formattedText: text
                             }
                         }
                     ]
@@ -52,6 +78,26 @@ server.post('/', (req, res) => {
             .then(course => {
                 if (course == undefined) res.send(simpleResponse('Vous n\'avez aucun cours ce jour la'));
                 else res.send(simpleResponse('Vous finissez à ' + course.end + ' avec ' + course.name));
+            })
+            .catch(() => {
+                res.status(501).send(simpleResponse('Erreur pendant la requète à l\'emploi du temps, réessayez plus tard', true));
+            });
+    }
+    else if (intent == "Liste de cours") {
+        let date = new Date(req.body.queryResult.outputContexts[0].parameters.date);
+
+        infos.getDayCourse(date)
+            .then(courses => {
+                if (courses.length == 0) res.send(simpleResponse('Vous n\'avez aucun cours ce jour là'));
+                else {
+                    let text = '';
+
+                    courses.forEach(course => {
+                        text += `**${course.name}** _${course.schedule}_ : ${course.staff} ${course.room}  \n`;
+                    });
+
+                    res.send(basicCard('Vos cours', infos.getPrettyDate(date), text, 'Voilà vos cours !', false));
+                }
             })
             .catch(() => {
                 res.status(501).send(simpleResponse('Erreur pendant la requète à l\'emploi du temps, réessayez plus tard', true));
