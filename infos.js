@@ -153,6 +153,22 @@ async function getNextCourse() {
     }
 }
 
+async function getStartTime(date) {
+    let course = undefined;
+    let today = await getCourseList('day', getDateFromDate(date));
+    
+    if (today.length != 0) {
+        course = today[0];
+
+        return {
+            name: getName(course),
+            start: getPrettyStart(course)
+        }
+    }
+
+    return course;
+}
+
 async function getEndTime(date) {
     let course = undefined;
     let today = await getCourseList('day', getDateFromDate(date));
@@ -186,6 +202,7 @@ async function getDayCourse(date) {
 }
 
 exports.getNextCourse = getNextCourse;
+exports.getStartTime = getStartTime;
 exports.getEndTime = getEndTime;
 exports.getDayCourse = getDayCourse;
 exports.getPrettyDate = getDateFromDate;

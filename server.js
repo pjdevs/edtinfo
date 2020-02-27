@@ -59,15 +59,15 @@ server.get('/', (req, res) => {
 
 server.post('/', (req, res) => {
     let intent = req.body.queryResult.intent.displayName;
+    console.log('Demandé: ' + intent);
 
     res.setHeader('Content-Type', 'application/json');
 
     if (intent == 'Prochain cours') server.emit('next_course', req, res);
-    else if (intent == "Heure de fin") server.emit('end_time', req, res);
-    else if (intent == "Liste de cours") server.emit('course_list', req, res);
-    else {
-        res.send(simpleResponse('Je n\'ai pas reconnu votre demande, reessayez', false));
-    }
+    else if (intent == 'Heure de début') server.emit('start_time', req, res);
+    else if (intent == 'Heure de fin') server.emit('end_time', req, res);
+    else if (intent == 'Liste de cours') server.emit('course_list', req, res);
+    else res.send(simpleResponse('Je n\'ai pas reconnu votre demande, reessayez', false));
 });
 
 server.on('next_course', (req, res) => {
@@ -78,6 +78,19 @@ server.on('next_course', (req, res) => {
     .catch(() => {
         res.status(501).send(simpleResponse('Erreur pendant la requète à l\'emploi du temps, réessayez plus tard', true));
     });
+});
+
+server.on('start_time', (req, res) => {
+    let date = new Date(req.body.queryResult.outputContexts[0].parameters.date);
+        
+    infos.getStartTime(date)
+        .then(course => {
+            if (course == undefined) res.send(simpleResponse('Vous n\'avez aucun cours ce jour la'));
+            else res.send(simpleResponse('Vous commencez à ' + course.start + ' avec ' + course.name));
+        })
+        .catch(() => {
+            res.status(501).send(simpleResponse('Erreur pendant la requète à l\'emploi du temps, réessayez plus tard', true));
+        });
 });
 
 server.on('end_time', (req, res) => {
