@@ -1,7 +1,11 @@
 const express = require('express');
 const morgan = require('morgan');
 const parser = require('body-parser')
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 const infos = require('./infos');
+const remarks = require('./remarks');
 
 function simpleResponse(speech, quit) {
     return {
@@ -20,6 +24,14 @@ function simpleResponse(speech, quit) {
             }
         }
     };
+}
+
+function addSimpleResponse(response, speech) {
+    response.payload.google.richResponse.items.push({
+        simpleResponse: {
+            textToSpeech: speech
+        }
+    });
 }
 
 function basicCard(title, subtitle, text, speech, quit) {
@@ -48,39 +60,54 @@ function basicCard(title, subtitle, text, speech, quit) {
     };
 }
 
-let server = express();
+let app = express();
+app.enable('trust poxy');
 
-server.use(parser.json());
-server.use(morgan('common'));
+app.use(parser.json());
+app.use(morgan('common'));
 
-server.get('/', (req, res) => {
+app.use((req, res, next) => {
+    if (req.secure) {
+        next();
+    }
+    else {
+        res.redirect('https://' + req.headers.host + req.url);
+    }
+});
+
+app.get('/', (req, res) => {
     res.send('Only post is supported on /');
 });
 
-server.post('/', (req, res) => {
+app.post('/', (req, res) => {
     let intent = req.body.queryResult.intent.displayName;
     console.log('Demandé: ' + intent);
 
     res.setHeader('Content-Type', 'application/json');
 
-    if (intent == 'Prochain cours') server.emit('next_course', req, res);
-    else if (intent == 'Heure de début') server.emit('start_time', req, res);
-    else if (intent == 'Heure de fin') server.emit('end_time', req, res);
-    else if (intent == 'Liste de cours') server.emit('course_list', req, res);
+    if (intent == 'Prochain cours') app.emit('next_course', req, res);
+    else if (intent == 'Heure de début') app.emit('start_time', req, res);
+    else if (intent == 'Heure de fin') app.emit('end_time', req, res);
+    else if (intent == 'Liste de cours') app.emit('course_list', req, res);
     else res.send(simpleResponse('Je n\'ai pas reconnu votre demande, reessayez', false));
 });
 
-server.on('next_course', (req, res) => {
+app.on('next_course', (req, res) => {
     infos.getNextCourse()
     .then(course => {
-        res.send(simpleResponse('Vous avez ' + course.name + course.start, false));
+        let response = simpleResponse('Vous avez ' + course.name + course.start, false);
+        let remark = remarks.makeRemark(course.name);
+
+        if (remark != '') addSimpleResponse(response, remark);
+
+        res.send(response);
     })
     .catch(() => {
         res.status(501).send(simpleResponse('Erreur pendant la requète à l\'emploi du temps, réessayez plus tard', true));
     });
 });
 
-server.on('start_time', (req, res) => {
+app.on('start_time', (req, res) => {
     let date = new Date(req.body.queryResult.outputContexts[0].parameters.date);
         
     infos.getStartTime(date)
@@ -93,7 +120,7 @@ server.on('start_time', (req, res) => {
         });
 });
 
-server.on('end_time', (req, res) => {
+app.on('end_time', (req, res) => {
     let date = new Date(req.body.queryResult.outputContexts[0].parameters.date);
         
     infos.getEndTime(date)
@@ -106,7 +133,7 @@ server.on('end_time', (req, res) => {
         });
 });
 
-server.on('course_list', (req, res) => {
+app.on('course_list', (req, res) => {
     let date = new Date(req.body.queryResult.outputContexts[0].parameters.date);
 
     infos.getDayCourse(date)
@@ -127,6 +154,13 @@ server.on('course_list', (req, res) => {
         });
 });
 
-server.listen(80, '0.0.0.0', () => {
+https.createServer({
+    key: fs.readFileSync('/etc/letsencrypt/live/pjdevs.servehttp.com/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/pjdevs.servehttp.com/fullchain.pem')
+}, app).listen(443, '0.0.0.0', () => {
+    console.log('Server listenning on port 443');
+});
+
+http.createServer(app).listen(80, '0.0.0.0', () => {
     console.log('Server listenning on port 80');
 });
